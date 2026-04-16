@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏆 Álbum BIGBANG </title>
+    <link rel="stylesheet" href="album.css" class="css">
+    
+</head>
+<body>
+    <div class="header">
+        <h1>BIGBANG Photocard Album</h1>
+        <p>¡Colecciona las 50 oficiales! 🔥</p>
+    </div>
+    
+    <div class="stats">
+        <div class="stat">⭐ <span id="count">0</span>/50</div>
+        <div class="stat">📍 <span id="checkinStatus">Pendiente</span></div>
+        <div class="stat">🎲 <span id="libres">0</span>/2</div>
+    </div>
+    
+    <div class="checkin">
+        <button id="btnCheckin">📍 Check-in Diario</button>
+        <button id="btnLiberar" disabled>🎲 Liberar Aleatoria</button>
+    </div>
+    
+    <div id="album" class="album"></div>
+    <div class="progreso" id="progreso"></div>
+
+    <script>
+        const TOTAL_CARDS = 50;
+        const MAX_DIARIAS = 2;
+        const FOTOS = Array.from({length: 50}, (_, i) => `${i + 1}.jpg`);
+
+        let album = JSON.parse(localStorage.getItem('album_bigbang')) || Array(TOTAL_CARDS).fill(null);
+        let checkins = JSON.parse(localStorage.getItem('checkins_bigbang')) || {};
+        let liberaciones = JSON.parse(localStorage.getItem('liberaciones_bigbang')) || {};
+
+        function hoy() { return new Date().toISOString().split('T')[0]; }
+        function checkinHecho() { return checkins[hoy()] === true; }
+        function liberacionesHoy() { const h = hoy(); return liberaciones[h] || 0; }
+
+        function hacerCheckin() {
+            if (!checkinHecho()) {
+                checkins[hoy()] = true;
+                localStorage.setItem('checkins_bigbang', JSON.stringify(checkins));
+                actualizarUI();
+                alert('✅ ¡Check-in BIGBANG completado! Puedes liberar 2 hoy! 🔥');
+            }
+        }
+
+        function liberarPhotocard() {
+            if (!checkinHecho() || liberacionesHoy() >= MAX_DIARIAS) return;
+            
+            const disponibles = album.map((slot, i) => !slot ? i : -1).filter(i => i >= 0);
+            if (!disponibles.length) { 
+                alert('🎉 ¡ALBUM COMPLETO! Eres un verdadero VIP! 🏆'); 
+                return; 
+            }
+
+            const idxSlot = disponibles[Math.floor(Math.random() * disponibles.length)];
+            const fotoAleatoria = FOTOS[Math.floor(Math.random() * FOTOS.length)];
+            
+            album[idxSlot] = fotoAleatoria;
+            
+            const h = hoy();
+            liberaciones[h] = liberacionesHoy() + 1;
+            
+            localStorage.setItem('album_bigbang', JSON.stringify(album));
+            localStorage.setItem('liberaciones_bigbang', JSON.stringify(liberaciones));
+            actualizarUI();
+        }
+
+        function actualizarUI() {
+            const count = album.filter(Boolean).length;
+            document.getElementById('count').textContent = count;
+            document.getElementById('checkinStatus').textContent = checkinHecho() ? 'Hecho ✅' : 'Pendiente';
+            document.getElementById('libres').textContent = Math.max(0, MAX_DIARIAS - liberacionesHoy());
+
+            document.getElementById('btnCheckin').disabled = checkinHecho();
+            const puedeLiberar = checkinHecho() && liberacionesHoy() < MAX_DIARIAS && count < TOTAL_CARDS;
+            document.getElementById('btnLiberar').disabled = !puedeLiberar;
+
+            const contenedor = document.getElementById('album');
+            contenedor.innerHTML = album.map(img => 
+                `<div class="card ${img ? 'llenada' : 'vacia'}">
+                    ${img ? `<img src="${img}?t=${Date.now()}" alt="BIGBANG" 
+                           onerror="this.parentElement.classList.remove('llenada'); this.parentElement.classList.add('vacia'); this.remove();">` : ''}
+                </div>`
+            ).join('');
+
+            document.getElementById('progreso').textContent = 
+                `${count === 50 ? '🏆 COMPLETO' : `${count}/50 (${Math.round(count/50*100)}%)`}`;
+        }
+
+        document.getElementById('btnCheckin').onclick = hacerCheckin;
+        document.getElementById('btnLiberar').onclick = liberarPhotocard;
+        actualizarUI();
+    </script>
+</body>
+</html>
