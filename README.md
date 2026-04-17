@@ -1,72 +1,101 @@
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #6600cc 100%); 
-            min-height: 100vh; 
-            color: white; 
-            overflow-x: hidden;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏆 Álbum BIGBANG </title>
+    <link rel="stylesheet" href="album.css" class="css">
+    
+</head>
+<body>
+    <div class="header">
+        <h1>BIGBANG Photocard Album</h1>
+        <p>¡Colecciona las 50 oficiales! 🔥</p>
+    </div>
+    
+    <div class="stats">
+        <div class="stat">⭐ <span id="count">0</span>/50</div>
+        <div class="stat">📍 <span id="checkinStatus">Pendiente</span></div>
+        <div class="stat">🎲 <span id="libres">0</span>/2</div>
+    </div>
+    
+    <div class="checkin">
+        <button id="btnCheckin">📍 Check-in Diario</button>
+        <button id="btnLiberar" disabled>🎲 Liberar Aleatoria</button>
+    </div>
+    
+    <div id="album" class="album"></div>
+    <div class="progreso" id="progreso"></div>
+
+    <script>
+        const TOTAL_CARDS = 50;
+        const MAX_DIARIAS = 2;
+        const FOTOS = Array.from({length: 50}, (_, i) => `${i + 1}.jpg`);
+
+        let album = JSON.parse(localStorage.getItem('album_bigbang')) || Array(TOTAL_CARDS).fill(null);
+        let checkins = JSON.parse(localStorage.getItem('checkins_bigbang')) || {};
+        let liberaciones = JSON.parse(localStorage.getItem('liberaciones_bigbang')) || {};
+
+        function hoy() { return new Date().toISOString().split('T')[0]; }
+        function checkinHecho() { return checkins[hoy()] === true; }
+        function liberacionesHoy() { const h = hoy(); return liberaciones[h] || 0; }
+
+        function hacerCheckin() {
+            if (!checkinHecho()) {
+                checkins[hoy()] = true;
+                localStorage.setItem('checkins_bigbang', JSON.stringify(checkins));
+                actualizarUI();
+                alert('✅ ¡Check-in BIGBANG completado! Puedes liberar 2 hoy! 🔥');
+            }
         }
-        .header { 
-            text-align: center; padding: 30px 20px; 
-            background: linear-gradient(45deg, #ff1493, #ff69b4, #ff1493); 
-            box-shadow: 0 10px 30px rgba(255,20,147,0.4);
-            margin-bottom: 30px;
+
+        function liberarPhotocard() {
+            if (!checkinHecho() || liberacionesHoy() >= MAX_DIARIAS) return;
+            
+            const disponibles = album.map((slot, i) => !slot ? i : -1).filter(i => i >= 0);
+            if (!disponibles.length) { 
+                alert('🎉 ¡ALBUM COMPLETO! Eres un verdadero VIP! 🏆'); 
+                return; 
+            }
+
+            const idxSlot = disponibles[Math.floor(Math.random() * disponibles.length)];
+            const fotoAleatoria = FOTOS[Math.floor(Math.random() * FOTOS.length)];
+            
+            album[idxSlot] = fotoAleatoria;
+            
+            const h = hoy();
+            liberaciones[h] = liberacionesHoy() + 1;
+            
+            localStorage.setItem('album_bigbang', JSON.stringify(album));
+            localStorage.setItem('liberaciones_bigbang', JSON.stringify(liberaciones));
+            actualizarUI();
         }
-        .header h1 { 
-            font-size: 2.5em; margin-bottom: 10px; 
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5); 
-            background: linear-gradient(45deg, #fff, #ffd700); 
-            -webkit-background-clip: text; 
-            -webkit-text-fill-color: transparent; 
+
+        function actualizarUI() {
+            const count = album.filter(Boolean).length;
+            document.getElementById('count').textContent = count;
+            document.getElementById('checkinStatus').textContent = checkinHecho() ? 'Hecho ✅' : 'Pendiente';
+            document.getElementById('libres').textContent = Math.max(0, MAX_DIARIAS - liberacionesHoy());
+
+            document.getElementById('btnCheckin').disabled = checkinHecho();
+            const puedeLiberar = checkinHecho() && liberacionesHoy() < MAX_DIARIAS && count < TOTAL_CARDS;
+            document.getElementById('btnLiberar').disabled = !puedeLiberar;
+
+            const contenedor = document.getElementById('album');
+            contenedor.innerHTML = album.map(img => 
+                `<div class="card ${img ? 'llenada' : 'vacia'}">
+                    ${img ? `<img src="${img}?t=${Date.now()}" alt="BIGBANG" 
+                           onerror="this.parentElement.classList.remove('llenada'); this.parentElement.classList.add('vacia'); this.remove();">` : ''}
+                </div>`
+            ).join('');
+
+            document.getElementById('progreso').textContent = 
+                `${count === 50 ? '🏆 COMPLETO' : `${count}/50 (${Math.round(count/50*100)}%)`}`;
         }
-        .header p { font-size: 1.2em; opacity: 0.9; }
-        .stats { 
-            display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px; 
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); 
-            padding: 20px; border-radius: 20px; margin-bottom: 30px; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-        }
-        .stat { text-align: center; font-weight: bold; font-size: 1.2em; }
-        .checkin { text-align: center; margin: 30px 0; }
-        button { 
-            background: linear-gradient(45deg, #ff1493, #ff69b4); 
-            color: white; border: none; padding: 15px 30px; 
-            border-radius: 50px; font-size: 18px; font-weight: bold; 
-            cursor: pointer; transition: all 0.3s ease; 
-            box-shadow: 0 5px 15px rgba(255,20,147,0.4);
-            margin: 0 10px;
-        }
-        button:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(255,20,147,0.6); }
-        button:disabled { background: #666; cursor: not-allowed; transform: none; box-shadow: none; }
-        .album { 
-            display: grid; 
-            grid-template-columns: repeat(5, 1fr); 
-            gap: 20px; max-width: 1000px; margin: 0 auto; padding: 0 20px; 
-        }
-        .card { 
-            aspect-ratio: 2/3; border-radius: 20px; 
-            display: flex; flex-direction: column; align-items: center; 
-            justify-content: center; position: relative; overflow: hidden;
-            transition: all 0.4s ease; cursor: pointer;
-        }
-        .card.vacia { 
-            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); 
-            border: 3px dashed rgba(255,255,255,0.3); backdrop-filter: blur(5px);
-        }
-        .card.vacia::before { content: '🎴'; font-size: 3em; opacity: 0.5; }
-        .card.llenada { 
-            background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,20,147,0.2)); 
-            border: 3px solid; border-image: linear-gradient(45deg, #ffd700, #ff1493) 1;
-            box-shadow: 0 15px 40px rgba(255,20,147,0.4); transform: scale(1.05);
-        }
-        .card img { 
-            width: 100%; height: 100%; object-fit: cover; border-radius: 17px; 
-            transition: transform 0.3s ease;
-        }
-        .card.llenada:hover img { transform: scale(1.1); }
-        .progreso { text-align: center; margin-top: 30px; font-size: 1.5em; font-weight: bold; }
-        @media (max-width: 768px) { 
-            .album { grid-template-columns: repeat(3, 1fr); gap: 15px; } 
-            .header h1 { font-size: 2em; }
-            .stats { flex-direction: column; gap: 10px; }
-        }
+
+        document.getElementById('btnCheckin').onclick = hacerCheckin;
+        document.getElementById('btnLiberar').onclick = liberarPhotocard;
+        actualizarUI();
+    </script>
+</body>
+</html>
